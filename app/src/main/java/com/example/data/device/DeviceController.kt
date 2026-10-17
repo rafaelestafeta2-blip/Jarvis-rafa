@@ -96,65 +96,10 @@ class DeviceController(private val context: Context) {
         }
     }
 
+    private val appLauncherHelper = AppLauncherHelper(context)
+
     fun openApplication(appNameQuery: String): String {
-        val query = appNameQuery.lowercase().trim()
-        val pm = context.packageManager
-
-        // Known direct system intents
-        when {
-            query.contains("câmera") || query.contains("camera") -> {
-                val intent = Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                context.startActivity(intent)
-                return "Abrindo a câmera, Sir."
-            }
-            query.contains("configuração") || query.contains("configurações") || query.contains("ajustes") -> {
-                val intent = Intent(Settings.ACTION_SETTINGS).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                context.startActivity(intent)
-                return "Abrindo as configurações do sistema, Sir."
-            }
-            query.contains("galeria") || query.contains("fotos") -> {
-                val intent = Intent(Intent.ACTION_VIEW).apply {
-                    type = "image/*"
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                context.startActivity(intent)
-                return "Abrindo a galeria de imagens, Sir."
-            }
-            query.contains("telefone") || query.contains("ligar") || query.contains("discador") -> {
-                val intent = Intent(Intent.ACTION_DIAL).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                context.startActivity(intent)
-                return "Abrindo o discador de telefone, Sir."
-            }
-        }
-
-        // Search installed apps matching query label or package name
-        try {
-            val packages = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-            for (app in packages) {
-                val label = pm.getApplicationLabel(app).toString().lowercase()
-                val pkgName = app.packageName.lowercase()
-
-                if (label.contains(query) || pkgName.contains(query)) {
-                    val launchIntent = pm.getLaunchIntentForPackage(app.packageName)
-                    if (launchIntent != null) {
-                        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        context.startActivity(launchIntent)
-                        val appLabel = pm.getApplicationLabel(app)
-                        return "Iniciando o aplicativo $appLabel, Sir."
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            // Ignore package scan failures
-        }
-
-        return "Sir, não encontrei um aplicativo instalado correspondente a '$appNameQuery'."
+        return appLauncherHelper.launchApp(appNameQuery)
     }
 
     fun generateFullDiagnosticReport(): String {

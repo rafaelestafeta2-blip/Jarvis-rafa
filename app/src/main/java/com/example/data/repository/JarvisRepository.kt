@@ -69,18 +69,44 @@ class JarvisRepository(
             return "Compreendido, Sir. Gravando esta informação em meu núcleo de memória de longo prazo."
         }
 
-        // App Launch Intent Detection ("abra o whatsapp", "abra a câmera", "abrir youtube", "iniciar spotify")
-        if (lower.startsWith("abra ") || lower.startsWith("abrir ") || lower.startsWith("iniciar ") || lower.contains("abra o ") || lower.contains("abra a ")) {
+        // App Launch Intent Detection ("abra o whatsapp", "abre o zap", "abrir whassap", "abrir youtube", "iniciar spotify")
+        val isAppLaunch = lower.startsWith("abra") || lower.startsWith("abre") || lower.startsWith("abrir") ||
+                lower.startsWith("iniciar") || lower.startsWith("lançar") || lower.startsWith("execute") ||
+                lower.contains("abra o ") || lower.contains("abra a ") || lower.contains("abre o ") || lower.contains("abre a ") ||
+                lower.contains("abrir o ") || lower.contains("abrir a ") ||
+                lower.contains("whatsapp") || lower.contains("whassap") || lower.contains("zap") || lower.contains("wats") || lower.contains("whats")
+
+        if (isAppLaunch) {
             val targetApp = lower
+                .replace("pode ", "")
+                .replace("por favor ", "")
+                .replace("abrir o ", "")
+                .replace("abrir a ", "")
+                .replace("abrir ", "")
                 .replace("abra o ", "")
                 .replace("abra a ", "")
                 .replace("abra ", "")
-                .replace("abrir ", "")
+                .replace("abre o ", "")
+                .replace("abre a ", "")
+                .replace("abre ", "")
+                .replace("iniciar o ", "")
+                .replace("iniciar a ", "")
                 .replace("iniciar ", "")
+                .replace("lançar ", "")
+                .replace("execute ", "")
+                .replace("para mim", "")
+                .replace("pra mim", "")
                 .trim()
-            if (targetApp.isNotBlank()) {
-                return deviceController?.openApplication(targetApp)
+
+            val queryToUse = if (targetApp.contains("whatsapp") || targetApp.contains("whassap") || targetApp.contains("zap") || targetApp.contains("whats") || targetApp.contains("wats")) {
+                "whatsapp"
+            } else if (targetApp.isNotBlank()) {
+                targetApp
+            } else {
+                lower
             }
+
+            return deviceController?.openApplication(queryToUse)
         }
 
         return when {

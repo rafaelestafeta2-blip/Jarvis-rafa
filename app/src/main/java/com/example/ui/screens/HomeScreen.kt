@@ -59,6 +59,8 @@ import com.example.ui.viewmodel.JarvisViewModel
 import com.example.ui.viewmodel.RemindersViewModel
 import com.example.ui.viewmodel.VoiceViewModel
 
+import androidx.compose.runtime.LaunchedEffect
+
 @Composable
 fun HomeScreen(
     jarvisViewModel: JarvisViewModel,
@@ -73,8 +75,18 @@ fun HomeScreen(
     val isListening by voiceViewModel.isListening.collectAsState()
     val isSpeaking by voiceViewModel.isSpeaking.collectAsState()
     val isContinuousMode by voiceViewModel.isContinuousMode.collectAsState()
+    val spokenText by voiceViewModel.spokenText.collectAsState()
     val reminders by remindersViewModel.reminders.collectAsState()
     val apiKeyConfigured by jarvisViewModel.apiKeyStatus.collectAsState()
+
+    LaunchedEffect(spokenText) {
+        if (spokenText.isNotBlank()) {
+            val query = spokenText
+            jarvisViewModel.sendMessage(query, isVoiceInput = true) { reply ->
+                voiceViewModel.speak(reply)
+            }
+        }
+    }
 
     val pendingReminders = reminders.filter { !it.isCompleted }
     val batteryPct = deviceController.getBatteryPercentage()

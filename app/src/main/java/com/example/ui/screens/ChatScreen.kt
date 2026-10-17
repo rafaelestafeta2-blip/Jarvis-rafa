@@ -123,7 +123,11 @@ fun ChatScreen(
 
     LaunchedEffect(spokenText) {
         if (spokenText.isNotBlank()) {
-            inputText = spokenText
+            val query = spokenText
+            inputText = query
+            jarvisViewModel.sendMessage(query, isVoiceInput = true) { reply ->
+                voiceViewModel.speak(reply)
+            }
         }
     }
 
