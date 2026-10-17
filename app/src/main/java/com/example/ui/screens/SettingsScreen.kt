@@ -71,8 +71,8 @@ fun SettingsScreen(
     val context = LocalContext.current
     val apiKeyStatus by jarvisViewModel.apiKeyStatus.collectAsState()
 
-    var pitchValue by remember { mutableFloatStateOf(0.92f) }
-    var speedValue by remember { mutableFloatStateOf(1.02f) }
+    var pitchValue by remember { mutableFloatStateOf(0.88f) }
+    var speedValue by remember { mutableFloatStateOf(0.98f) }
     var isBackgroundActive by remember { mutableStateOf(false) }
 
     val scrollState = rememberScrollState()

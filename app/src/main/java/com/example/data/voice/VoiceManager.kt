@@ -8,7 +8,6 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
-import android.speech.tts.Voice
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -30,8 +29,8 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener, 
     val audioVolumeRms = MutableStateFlow(0f)
     val voiceError = MutableStateFlow<String?>(null)
 
-    var speechPitch: Float = 0.92f // Deeper, sophisticated Jarvis tone
-    var speechRate: Float = 1.02f  // Fluent, natural Brazilian cadence
+    var speechPitch: Float = VoiceSelector.DEFAULT_JARVIS_PITCH
+    var speechRate: Float = VoiceSelector.DEFAULT_JARVIS_RATE
 
     init {
         initSpeechRecognizer()
@@ -88,47 +87,39 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener, 
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
-            val ptBrLocale = Locale("pt", "BR")
-            tts?.language = ptBrLocale
+            tts?.let { engine ->
+                val ptBrLocale = Locale("pt", "BR")
+                engine.language = ptBrLocale
 
-            // Scan available voices for high-quality Portuguese male voice
-            try {
-                val availableVoices = tts?.voices
-                if (!availableVoices.isNullOrEmpty()) {
-                    val bestJarvisVoice = availableVoices.firstOrNull { v ->
-                        val name = v.name.lowercase()
-                        v.locale == ptBrLocale && (
-                                name.contains("male") ||
-                                name.contains("masculino") ||
-                                name.contains("jef") ||
-                                name.contains("jab") ||
-                                name.contains("ptm") ||
-                                name.contains("local")
-                        ) && !v.isNetworkConnectionRequired
-                    } ?: availableVoices.firstOrNull { v -> v.locale == ptBrLocale && !v.isNetworkConnectionRequired }
-
-                    bestJarvisVoice?.let { voice ->
-                        tts?.voice = voice
-                    }
+                VoiceSelector.configureAudioAttributes(engine)
+                VoiceSelector.findBestJarvisVoice(engine)?.let { selectedVoice ->
+                    engine.voice = selectedVoice
                 }
-            } catch (e: Exception) {
-                // Fallback to default PT-BR
-            }
 
-            tts?.setPitch(speechPitch)
-            tts?.setSpeechRate(speechRate)
+                engine.setPitch(speechPitch)
+                engine.setSpeechRate(speechRate)
+            }
         }
     }
 
     fun speak(text: String) {
+        val cleanedText = VoiceTextCleaner.cleanForSpeech(text)
+        if (cleanedText.isBlank()) return
+
         tts?.let { engine ->
             engine.setPitch(speechPitch)
             engine.setSpeechRate(speechRate)
             isSpeaking.value = true
+
             val params = Bundle().apply {
-                putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "JARVIS_UTTERANCE_ID")
+                putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "JARVIS_UTTERANCE_${System.currentTimeMillis()}")
             }
-            engine.speak(text, TextToSpeech.QUEUE_FLUSH, params, "JARVIS_UTTERANCE_ID")
+
+            val chunks = VoiceTextCleaner.splitIntoSentences(cleanedText)
+            for (i in chunks.indices) {
+                val queueMode = if (i == 0) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
+                engine.speak(chunks[i], queueMode, params, "JARVIS_CHUNK_$i")
+            }
         }
     }
 
@@ -154,7 +145,7 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener, 
         try {
             speechRecognizer?.startListening(intent)
             isListening.value = true
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             isListening.value = false
         }
     }
@@ -175,7 +166,7 @@ class VoiceManager(private val context: Context) : TextToSpeech.OnInitListener, 
         }
     }
 
-    // SpeechRecognizer Callbacks
+    // Callbacks SpeechRecognizer
     override fun onReadyForSpeech(params: Bundle?) { isListening.value = true }
     override fun onBeginningOfSpeech() { isListening.value = true }
     override fun onRmsChanged(rmsdB: Float) { audioVolumeRms.value = rmsdB }
