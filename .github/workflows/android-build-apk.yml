@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
       GRADLE_OPTS: "-Djava.awt.headless=true -Xmx4g"
 
     steps:
@@ -26,13 +28,9 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Accept Android SDK Licenses & Install API 36
+      - name: Accept Android SDK Licenses
         run: |
-          yes | sdkmanager --licenses || true
-          sdkmanager "platforms;android-36" "build-tools;36.0.0" || true
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
@@ -51,9 +49,8 @@ jobs:
             echo "debug.keystore already exists"
           fi
 
-      - name: Create .env Configuration File (with safe fallback)
+      - name: Create .env Configuration File
         run: |
-          # If secret is present, use it. Otherwise use a placeholder key so compilation doesn't fail with empty expression syntax error
           KEY="${{ secrets.GEMINI_API_KEY }}"
           if [ -z "$KEY" ]; then
             KEY="AIzaSy_JARVIS_DEFAULT_KEY_PLACEHOLDER"
