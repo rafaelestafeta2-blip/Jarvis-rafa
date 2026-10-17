@@ -42,7 +42,7 @@ jobs:
         run: chmod +x gradlew || true
 
       - name: Build Debug APK with Gradle
-        run: gradle assembleDebug -Djava.awt.headless=true --no-daemon --stacktrace
+        run: gradle assembleDebug --no-configuration-cache --stacktrace
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
