@@ -7,45 +7,65 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.MainActivity
 import com.example.R
-import com.example.data.voice.VoiceManager
 
 class JarvisForegroundService : Service() {
 
-    private var voiceManager: VoiceManager? = null
-
     companion object {
+        private const val TAG = "JarvisForegroundService"
         const val CHANNEL_ID = "jarvis_background_channel"
         const val NOTIFICATION_ID = 1001
 
         fun startService(context: Context) {
-            val intent = Intent(context, JarvisForegroundService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
+            try {
+                val intent = Intent(context, JarvisForegroundService::class.java)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Cannot start foreground service: ${e.message}", e)
             }
         }
 
         fun stopService(context: Context) {
-            val intent = Intent(context, JarvisForegroundService::class.java)
-            context.stopService(intent)
+            try {
+                val intent = Intent(context, JarvisForegroundService::class.java)
+                context.stopService(intent)
+            } catch (e: Exception) {
+                Log.e(TAG, "Cannot stop foreground service: ${e.message}", e)
+            }
         }
     }
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        voiceManager = VoiceManager(applicationContext)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val notification = createNotification()
-        startForeground(NOTIFICATION_ID, notification)
+        try {
+            val notification = createNotification()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val serviceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                } else {
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                }
+                startForeground(NOTIFICATION_ID, notification, serviceType)
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to startForeground: ${e.message}", e)
+        }
         return START_STICKY
     }
 
@@ -96,6 +116,5 @@ class JarvisForegroundService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        voiceManager?.destroy()
     }
 }

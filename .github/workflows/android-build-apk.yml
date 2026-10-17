@@ -13,36 +13,62 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      GRADLE_OPTS: "-Djava.awt.headless=true"
+      GRADLE_OPTS: "-Djava.awt.headless=true -Xmx4g"
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Java JDK 17
+      - name: Set up Java JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android SDK Licenses & Install API 36
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" || true
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '9.3.1'
 
-      - name: Generate Debug Keystore
+      - name: Restore or Generate Debug Keystore
         run: |
-          keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-          echo "debug.keystore generated successfully"
+          if [ -f debug.keystore.base64 ]; then
+            base64 -d debug.keystore.base64 > debug.keystore
+            echo "debug.keystore restored from base64"
+          elif [ ! -f debug.keystore ]; then
+            keytool -genkeypair -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+            echo "debug.keystore generated via keytool"
+          else
+            echo "debug.keystore already exists"
+          fi
 
-      - name: Create .env Configuration File
+      - name: Create .env Configuration File (with safe fallback)
         run: |
-          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" > .env
-          echo ".env file created for build"
+          # If secret is present, use it. Otherwise use a placeholder key so compilation doesn't fail with empty expression syntax error
+          KEY="${{ secrets.GEMINI_API_KEY }}"
+          if [ -z "$KEY" ]; then
+            KEY="AIzaSy_JARVIS_DEFAULT_KEY_PLACEHOLDER"
+            echo "Notice: GEMINI_API_KEY secret not found in GitHub Secrets, using placeholder for build"
+          else
+            echo "GEMINI_API_KEY found in GitHub Secrets"
+          fi
+          echo "GEMINI_API_KEY=$KEY" > .env
+          echo ".env file generated successfully"
 
-      - name: Grant Execute Permission for Gradle
+      - name: Grant Execute Permission for Gradle Wrapper
         run: chmod +x gradlew || true
 
-      - name: Build Debug APK with Gradle
-        run: gradle assembleDebug --no-configuration-cache --stacktrace
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --no-daemon --no-configuration-cache --stacktrace
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
