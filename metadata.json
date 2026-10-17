@@ -1,0 +1,6 @@
+{
+  "name": "JARVIS AI",
+  "description": "Iron Man inspired JARVIS AI assistant with voice recognition, text-to-speech, holographic HUD, reminders, and Gemini AI integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
